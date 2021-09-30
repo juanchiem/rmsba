@@ -9,57 +9,59 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 pacman::p_load(tidyverse,googlesheets4)
-gs4_auth(email="cerrudoanibal@gmail.com")
+gs4_auth(email="edwardsmolina@gmail.com")
 
 url<- "https://docs.google.com/spreadsheets/d/1uYgR0ccm-PsZ8JwMDYWX8mUFI-N4I5ldN1EuB49hfno/edit?usp=sharing"
-url %>% gs4_browse()
+# url %>% gs4_browse()
 ecb <- gs4_get(url)
 ```
 
 ```{r}
-raw <- ecb %>% read_sheet(sheet="rawt", skip=0)
+raw <- ecb %>% read_sheet(sheet="rawt", skip=0) %>% 
+    mutate_at(vars(rep, subzona, subzona, hib), as.factor)
 ```
 
 ```{r}
-raw %>% 
-  mutate(borrar=NA) %>% 
-  write_sheet(agroe, sheet = "rawt")
-raw
+# raw %>% 
+#   mutate(borrar=NA) %>% 
+#   write_sheet(agroe, sheet = "rawt")
+# raw
 ```
 
 ```{r}
-raw <- raw %>%
-  mutate (rep=as.factor(rep), subzona=as.factor(subzona),hib=as.factor (hib))
+oeste <- raw %>% 
+  dplyr::filter(subzona=="oeste") 
 ```
 
-
 ```{r}
-rawo<-raw %>% 
-  dplyr::filter(subzona=="oeste")
-
-sum<- rawo%>%
+sum <- oeste %>%
     group_by(subzona,hib) %>%
     summarise(n = sum(!is.na(rto14)), 
               mean = mean(rto14, na.rm = T), 
               sd = sd(rto14), 
               se = sd(rto14)/sqrt(n),
               meanrt= mean(rto14,na.rm = T))#,
-   #           meanrv= m
-#ean(radv,na.rm = T),
-      #       meanrr= mean(radr,na.rm = T) )
+sum
 ```
 
-
-##1) Rto subzona oeste
 ```{r}
-rawo %>% 
+library(metan)
+inspect <- oeste %>% 
+  dplyr::select_if(is.numeric) %>% 
+  inspect(verbose = FALSE, plot = TRUE)
+inspect
+```
+
+## 1) Rto subzona oeste
+
+```{r}
+oeste %>% 
   ggplot(aes(x = hib, y = rto14, col=hib))+
   #geom_boxplot(outlier.shape = NA) +
   geom_jitter(alpha = 0.2, width = 0.1)+
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), level = 0.9)
  # coord_cartesian (ylim = c(0,18000), xlim = c(4,10))+
-  
-theme(text = element_text(size=10),
+  theme(text = element_text(size=10),
         axis.text.x = element_text(angle=90, hjust=1)) +
  facet_grid ("sitio")
 ```

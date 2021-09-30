@@ -1,0 +1,367 @@
+---
+title: "RMSBA 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(tidyverse,googlesheets4)
+gs4_auth(email="cerrudoanibal@gmail.com")
+
+url<- "https://docs.google.com/spreadsheets/d/1uYgR0ccm-PsZ8JwMDYWX8mUFI-N4I5ldN1EuB49hfno/edit?usp=sharing"
+url %>% gs4_browse()
+ecb <- gs4_get(url)
+```
+
+```{r}
+raw <- ecb %>% read_sheet(sheet="rawt", skip=0)
+```
+
+```{r}
+raw %>% 
+  mutate(borrar=NA) %>% 
+  write_sheet(agroe, sheet = "rawt")
+raw
+```
+
+```{r}
+raw <- raw %>%
+  mutate (rep=as.factor(rep), subzona=as.factor(subzona),hib=as.factor (hib))
+```
+
+
+```{r}
+rawo<-raw %>% 
+  dplyr::filter(subzona=="oeste")
+
+sum<- rawo%>%
+    group_by(subzona,hib) %>%
+    summarise(n = sum(!is.na(rto14)), 
+              mean = mean(rto14, na.rm = T), 
+              sd = sd(rto14), 
+              se = sd(rto14)/sqrt(n),
+              meanrt= mean(rto14,na.rm = T))#,
+   #           meanrv= m
+#ean(radv,na.rm = T),
+      #       meanrr= mean(radr,na.rm = T) )
+```
+
+
+##1) Rto subzona oeste
+```{r}
+rawo %>% 
+  ggplot(aes(x = hib, y = rto14, col=hib))+
+  #geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.2, width = 0.1)+
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2), level = 0.9)
+ # coord_cartesian (ylim = c(0,18000), xlim = c(4,10))+
+  
+theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=90, hjust=1)) +
+ facet_grid ("sitio")
+```
+
+#4) Ajuste de modelo:
+
+```{r}
+pacman::p_load(readr, tidyverse, forcats, # data import and handling
+               lme4, ct,            # linear mixed model 
+               emmeans, multcomp,         # mean comparisons
+               ggplot2, desplot, agridat, nmle)          # plots
+```
+
+Ajuste de modelo:
+
+```{r}
+library(metan)
+# ANOVA for all variables in data
+ind_an <- anova_joint(rawo,
+env = sitio,
+gen = hib,
+rep = rep,
+resp = rto14)
+# mean for each environment
+get_model_data(ind_an)
+# P-value for genotype effect
+get_model_data(ind_an, "details")
+```
+
+```{r}
+
+library(metan)
+# ANOVA for all variables in data
+ind_a <- gamem_met(rawo,
+env = sitio,
+gen = hib,
+rep = rep,
+resp = rto14,
+random= "env",
+prob=0.05,
+verbose= TRUE
+)
+
+plot(ind_a, type = "re")
+# mean for each environment
+get_model_data(ind_a)
+# P-value for genotype effect
+get_model_data(ind_a, "details")
+```
+
+```
+
+
+```{r}
+library(metan)
+ge_plot(rawo, hib, sitio, rto14)
+ge_plot(rawo, sitio, hib, rto14, type = 2)
+ge_winners(rawo, sitio, hib, rto14, type = "ranks")
+```
+
+```{r}
+library(metan)
+BLUP <- waasb(rawo,
+resp = rto14,
+gen = hib,
+env = sitio,
+rep = rep)
+plot_blup(BLUP)
+plot_blup(BLUP, which = "gen")
+```
+
+
+
+
+```{r}
+library(lme4, nlme)
+mod.d <- lmer(rto14 ~ rep + hib*sitio +
+                     (1|rep:sitio), 
+                     data=rawo)
+
+mod.d
+
+
+
+```
+
+Homocedasticidad
+
+```{r}
+
+plot(mod.d, which = 1)
+#car::leveneTest(mod.d)
+```
+
+Anova
+
+```{r}
+anv <- car::Anova(mod.d)
+summary(mod.d)
+anv
+
+```
+
+Medias e intervalos de confianza
+
+```{r}
+em <- emmeans(mod.d, ~hib|sitio, type = "response")
+em
+```
+
+Comparación de las medias:
+
+```{r}
+res <- cld(em, Letters = letters, reverse = T, alpha = 0.05)
+res
+```
+
+
+
+
+Medias e intervalos de confianza
+
+```{r}
+em <- emmeans(mod.s, ~trat*cob, type = "response")
+em
+```
+
+Comparación de las medias:
+
+```{r}
+res <- cld(em,level=0.95, Letters = letters, reverse = T, alpha = 0.13)
+res
+```
+
+Gráfico de intervalos de confianza
+
+```{r}
+plot(res)
+res_tbl <- res %>%
+    as_tibble()
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+pacman::p_load(readr, tidyverse, forcats, # data import and handling
+               lme4, ct,            # linear mixed model 
+               emmeans, multcomp,         # mean comparisons
+               ggplot2, desplot)          # plots
+```
+
+
+
+
+
+
+
+```{r}
+
+library(lme4)
+mod.d <- lmer(rto14 ~ rep + sitio*hib +
+                     (1|rep:hib), 
+                     data=rawo)
+
+mod.d
+
+```
+
+
+Homocedasticidad
+
+```{r}
+
+plot(mod.d, which = 1)
+#car::leveneTest(mod.d)
+```
+
+Anova
+
+```{r}
+anv <- car::Anova(mod.d)
+summary(mod.d)
+anv
+
+```
+
+Medias e intervalos de confianza
+
+```{r}
+em <- emmeans(mod.d, ~trat*cob, type = "response")
+em
+```
+
+Comparación de las medias:
+
+```{r}
+res <- cld(em,level=0.95, Letters = letters, reverse = T, alpha = 0.13)
+res
+```
+
+Gráfico de intervalos de confianza
+
+```{r}
+plot(res)
+res_tbl <- res %>%
+    as_tibble()
+```
+
+
+
+```{r}
+raws <- ecb %>% read_sheet(sheet="raws", skip=0)
+```
+
+```{r}
+raws %>% 
+  mutate(borrar=NA) %>% 
+  write_sheet(agroe, sheet = "raws")
+
+raws
+```
+
+
+1) rto en fun fert plit por dens e hib
+
+```{r}
+raws <- raws %>%
+  mutate (rep=as.factor(rep))
+
+  #mutate (fertf=as.factor(fert)) %>%
+raws %>% 
+  ggplot(aes(x = hib, y = hum, col=hib))+
+  #geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.2, width = 0.1)+
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2), level = 0.9)
+ # coord_cartesian (ylim = c(0,18000), xlim = c(4,10))+
+  
+theme(text = element_text(size=8),
+        axis.text.x = element_text(angle=90, hjust=1)) +
+ facet_grid ("ensayo~sitio")
+  
+```
+
+4) Ajuste de modelo:
+
+```{r}
+pacman::p_load(readr, tidyverse, forcats, # data import and handling
+               lme4, ct,            # linear mixed model 
+               emmeans, multcomp,         # mean comparisons
+               ggplot2, desplot)          # plots
+```
+
+
+```{r}
+
+library(lme4)
+mod.d <- lmer(rto14 ~ rep + sitio*hib +
+                     (1|rep:hib), 
+                     data=raw)
+
+mod.d
+
+```
+
+
+Homocedasticidad
+
+```{r}
+
+plot(mod.d, which = 1)
+#car::leveneTest(mod.d)
+```
+
+Anova
+
+```{r}
+anv <- car::Anova(mod.d)
+summary(mod.d)
+anv
+
+```
+
+Medias e intervalos de confianza
+
+```{r}
+em <- emmeans(mod.d, pairwise ~ hib)# | sitio)
+em
+
+```
+
+Comparación de las medias:
+
+```{r}
+res <- cld(em, Letters = letters, reverse = T, alpha = 0.05)
+res
+```
+
+

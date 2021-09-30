@@ -1,0 +1,396 @@
+---
+title: "Analisis de performance de hibridos de maiz - Red de maices tardios"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+pacman::p_load(tidyverse, metan)
+
+theme_anibal <- cowplot::theme_minimal_grid() %+replace%
+  theme(axis.text.x = element_text(angle = 60,
+                                   hjust=0.98,vjust=1)) 
+```
+
+```{r, eval=FALSE}
+pacman::p_load(googlesheets4, lubridate)
+
+# googledrive::drive_find(type = "spreadsheet")
+
+gs4_deauth()
+mz <- gs4_get("1ICm4UsXBV2Fn2HeMq5WfHfz8H-97OeE7TPY6YYJsG1U")
+# gs4_browse(mz)
+
+dat <- read_sheet(mz, sheet = "raw1", guess_max = 10000) %>% 
+  janitor::clean_names() %>% 
+  mutate_if(is.character, as.factor) 
+
+glimpse(dat)
+# write_excel_csv(dat)
+dat20 <- dat %>% 
+  filter(anio == "20") %>% 
+  # filter(subzona == "Este") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+dat_este <- dat %>% 
+  filter(anio == "20") %>% 
+  filter(subzona == "Este") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+dat_oeste <- dat %>% 
+  filter(anio == "20") %>% 
+  filter(subzona == "Oeste") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+save(dat20, dat_este, dat_oeste, file = "dat20.rdata")
+```
+
+```{r}
+load("dat20.rdata")
+ftable(xtabs(~  subzona +hib+ localidad, dat_este))
+ftable(xtabs(~  subzona +hib+ localidad, dat_oeste))
+```
+
+```{r, eval=FALSE}
+pacman::p_load(googlesheets4, lubridate)
+
+# googledrive::drive_find(type = "spreadsheet")
+
+gs4_deauth()
+mz <- gs4_get("1ICm4UsXBV2Fn2HeMq5WfHfz8H-97OeE7TPY6YYJsG1U")
+# gs4_browse(mz)
+
+dat <- read_sheet(mz, sheet = "raw1", guess_max = 10000) %>% 
+  janitor::clean_names() %>% 
+  mutate_if(is.character, as.factor) 
+
+glimpse(dat)
+# write_excel_csv(dat)
+dat20 <- dat %>% 
+  filter(anio == "20") %>% 
+  # filter(subzona == "Este") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+dat_este <- dat %>% 
+  filter(anio == "20") %>% 
+  filter(subzona == "Este") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+dat_oeste <- dat %>% 
+  filter(anio == "20") %>% 
+  filter(subzona == "Oeste") %>% 
+  droplevels() %>% 
+  mutate_at(vars(rep), as.factor)
+
+save(dat20, dat_este, dat_oeste, file = "dat20.rdata")
+```
+
+```{r xtabs}
+ftable(xtabs(~  subzona +hib+ localidad, dat_este))
+ftable(xtabs(~  subzona +hib+ localidad, dat_oeste))
+```
+
+```{r}
+dat20 %>% 
+  drop_na(rend14) %>% 
+  ggplot(aes(x=as.numeric(a_disp_mm), y=rend14/100, col = subzona, group = subzona))+
+  facet_wrap(~hib)+
+  geom_point()+
+  stat_summary(fun="mean", geom="line", size = 0.7)+
+  theme_anibal+
+  labs(x = "", y = "Rend. aj. 14% (qq)",
+              title = "Rendimiento en función de agua útil a la siembra")+
+  scale_x_continuous(limits = c(250, 600), 
+                     breaks = seq(250, 600, by = 50))
+
+ggsave(last_plot(), w=7.5, h=6, 
+file = "plots/agua.png"
+# file = "plots/este_bw.png"
+)
+```
+
+
+
+```{r, fig.height= 8}
+dat_este %>% 
+  group_by(localidad) %>% 
+  mutate(localidad = fct_recode(localidad, 
+                                "Gonzales Chaves" = "Gonzalez Chaves")) %>% droplevels() %>% 
+  summarise(rend14=mean(rend14/100, na.rm = T))->este
+
+dat_oeste %>% 
+  group_by(localidad) %>% 
+  summarise(rend14=mean(rend14/100, na.rm = T))->oeste
+
+dat_este %>%
+  mutate(localidad = fct_recode(localidad, 
+                                "Gonzales Chaves" = "Gonzalez Chaves")) %>% droplevels() %>%
+  ggplot(aes(x=fct_reorder(hib, rend14, .desc =TRUE),         
+             y=rend14/100,
+             fill=hib
+             ))+
+  geom_point(alpha=0.8, 
+             # fill = "grey50",
+             shape = 21)+
+  # stat_summary(fun = mean,  #median
+  #              geom = "crossbar", 
+  #              size = 0.2)+
+  geom_hline(aes(yintercept = rend14), este, linetype = 2)+
+  facet_wrap("localidad", ncol = 2)+
+  guides(fill = F)+
+  scale_fill_viridis_d()+
+  theme_anibal+
+  labs(x = "", y = "Rend. aj. 14% (qq)",
+              title = "Sub-zona Este")  
+
+ggsave(last_plot(), w=7, h=6, 
+file = "plots/este_col.png"
+# file = "plots/este_bw.png"
+)
+
+dat_oeste %>% 
+  ggplot(aes(x=fct_reorder(hib, rend14, .desc =TRUE),             
+             y=rend14/100, 
+             fill=hib
+             ))+
+  geom_point(alpha=0.8, 
+             # fill = "grey50",
+             shape = 21)+
+  # stat_summary(fun = mean,  #median
+  #              geom = "crossbar", 
+  #              size = 0.2)+
+  geom_hline(aes(yintercept = rend14), oeste, linetype = 2)+
+  facet_wrap("localidad", ncol = 2)+
+  guides(fill = F)+
+  scale_fill_viridis_d()+
+  theme_anibal+
+  labs(x = "", y = "Rend. aj. 14% (qq)", 
+       title = "Sub-zona Oeste")  
+
+ggsave(last_plot(), w=7, h=6, 
+file = "plots/oeste_col.png"
+# file = "plots/oeste_bw.png"
+)
+```
+
+```{r}
+pacman::p_load(lme4, emmeans, multcomp)
+```
+
+# Oeste 
+
+## Global sin P078
+
+- localidad como efecto aleatorio
+
+```{r}
+mod2 <- lmer(rend14 ~ hib + (1|localidad/rep), 
+             data = dat_oeste %>% filter(hib!="P078 (PC)"))
+car::Anova(mod2)
+# plot(mod2)
+cld(emmeans(mod2, ~hib), reversed = T, 
+    Letters = letters)
+```
+
+## Global sin Carhue (+P078)
+
+```{r}
+mod4 <- lmer(rend14 ~ hib * localidad + (1|localidad:rep), 
+             data = dat_oeste %>% filter(localidad!="Carhue"))
+car::Anova(mod4)
+# plot(mod2)
+cld(emmeans(mod4, ~hib|localidad), reversed = T, Letters = letters)
+```
+
+Para estimar el hibrido dentro de cada ambiente
+
+```{r}
+mod3 <- lmer(rend14 ~ hib * localidad + (1|localidad:rep), 
+             data = dat_oeste %>% filter(hib!="P078 (PC)"))
+car::Anova(mod3)
+# plot(mod2)
+cld(emmeans(mod3, ~hib|localidad), reversed = T, Letters = letters)
+```
+
+
+# Este 
+
+## Global sin P078
+
+- localidad como efecto aleatorio
+
+```{r}
+mod5 <- lmer(rend14 ~ hib + (1|localidad/rep), 
+             data = dat_este %>% filter(hib!="P078 (PC)"))
+car::Anova(mod5)
+# plot(mod5)
+cld(emmeans(mod5, ~hib), reversed = T, 
+    Letters = letters)
+```
+
+## Este Global sin Chillar (+P078)
+
+```{r}
+mod7 <- lmer(rend14 ~ hib * localidad + (1|localidad:rep), 
+             data = dat_este %>% filter(localidad!="Chillar"))
+car::Anova(mod7)
+# plot(mod2)
+cld(emmeans(mod7, ~hib|localidad), reversed = T, Letters = letters)
+```
+
+Para estimar el hibrido dentro de cada ambiente
+
+```{r}
+mod6 <- lmer(rend14 ~ hib * localidad + (1|localidad:rep), 
+             data = dat_este %>% filter(hib!="P078 (PC)"))
+car::Anova(mod6)
+# plot(mod2)
+cld(emmeans(mod6, ~hib|localidad), reversed = T, Letters = letters)
+```
+
+
+
+```{r, eval=FALSE}
+ge_winners(dat_este, localidad, hib, resp = rend14, 
+           type = "ranks")
+
+is_balanced_trial(dat_este, localidad, hib, rend14)
+j_an <- anova_joint(dat_este %>% 
+               filter(localidad != "Chillar"),
+                    env = localidad,
+                    gen = hib,
+                    rep = rep,
+                    resp = rend14)
+# Predicted values
+get_model_data(j_an)
+get_model_data(j_an, "details")
+plot(j_an,
+     which = c(1, 2, 5),
+     nrow = 1)
+```
+
+
+```{r, eval=FALSE}
+dat_oeste %>% 
+  ggplot(aes(x=densidad, 
+             y=rend14/100))+
+  geom_smooth(method = "lm")+
+  geom_point(alpha=0.2)+
+  facet_wrap("localidad", ncol = 2)+
+  # coord_flip()+
+  theme_aapre0+
+  labs(x = "Densidad (pl/ha)", 
+       y = "Rend. aj. 14% (qq)")  
+
+# ggsave(shift_legend2(p1), file = "plots_tricho/picr.png", w=6.5, h=6)
+```
+# Variance partition
+
+Usaremos el paquete metan de Tiago Olivoto
+
+(para citar: https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.13384)
+
+```{r, eval=FALSE}
+inspect <- inspect(select(dat20, localidad, hib, rep, rend14),
+        verbose = FALSE,
+        plot = TRUE)
+inspect
+```
+
+Ajusto un modelo de efectos aleatorios DBC dentro de cada ambiente (rep anidada dentro de cada ambiente)
+## Global 
+
+```{r}
+Mod_global <- gamem_met(dat20, localidad, hib, rep, rend14,  random  = "all") 
+# plot(Mod, type = "re")
+
+Mod_global
+```
+
+BLUPS de cada genotipo
+```{r}
+gmd(Mod_global, "blupg")
+plot_blup(Mod_global, 
+          x.lab = "Rendimiento al 14% (kg/ha)", 
+          y.lab = "",
+          check.overlap = TRUE)
+
+```
+
+## Oeste 
+
+```{r}
+Mod_oeste <- gamem_met(dat_oeste %>% filter(hib!="P078 (PC)"), 
+                 localidad, hib, rep, rend14,  random  = "all") 
+# plot(Mod, type = "re")
+
+Mod_oeste
+```
+
+BLUPS de cada genotipo
+```{r}
+gmd(Mod_oeste, "blupg")
+plot_blup(Mod_oeste)
+```
+
+BLUPS de genotipo x ambiente
+
+```{r, fig.height= 8}
+gmd(Mod_oeste, "blupge") %>% 
+  pivot_wider(names_from = ENV, values_from = c(rend14))
+
+plot_blup(Mod_oeste, which = "ge", 
+          x.lab = "Rendimiento al 14% (kg/ha)", 
+          y.lab = "",
+          check.overlap = TRUE,
+)
+```
+
+# Análisis de desempeño y estabilidad 
+
+Papers de Olivoto 
+(https://acsess.onlinelibrary.wiley.com/doi/abs/10.2134/agronj2019.03.0220,  
+https://acsess.onlinelibrary.wiley.com/doi/full/10.2134/agronj2019.03.0221)
+
+https://tiagoolivoto.github.io/metan/articles/vignettes_blup.html?fbclid=IwAR0xiqT-dUByn-WyDzbJ5rtBXUyUM1Xww4pST4EtYFqshx7Fg02iFLT_2lA#the-blup-model-for-met-trials-1  
+
+
+Modelo efectos aleatorios de AMMI con indice de estabilidad "waasb" (Weighted Average of the Absolute Scores)
+
+
+```{r,  eval=FALSE}
+model3 <- waasb(dat20,
+                env = localidad,
+                gen = hib,
+                rep = rep,
+                resp = c(rend14),
+                random = "all",
+                mresp = c(100),
+                wresp = c(100))
+```
+
+Genotipos mas proximos a las localidades significan mejores adapatados a esos ambientes
+
+```{r,  eval=FALSE}
+plot_scores(model3, type = 2)
+```
+
+biplot type 3: GY x WAASB
+
+The quadrants proposed by Olivoto et al. (2019) in the following biplot represent four classifications regarding the joint interpretation of mean performance and stability. The genotypes or environments included in quadrant I can be considered unstable genotypes or environments with high discrimination ability, and with productivity below the grand mean. In quadrant II are included unstable genotypes, although with productivity above the grand mean. The environments included in this quadrant deserve special attention since, in addition to providing high magnitudes of the response variable, they present a good discrimination ability. Genotypes within quadrant III have low productivity, but can be considered stable due to the lower values of WAASB. The lower this value, the more stable the genotype can be considered. The environments included in this quadrant can be considered as poorly productive and with low discrimination ability. The genotypes within the quadrant IV are highly productive and broadly adapted due to the high magnitude of the response variable and high stability performance (lower values of WAASB).
+
+```{r,  eval=FALSE}
+plot_scores(model3, type = 3)
+# plot_scores(model3, type = 4)
+```
+
+Vidal y Necochea son los ambientes mas discriminantes y mayor producción, Dorrego es poco 
+discriminante y menor producción.

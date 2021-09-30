@@ -8,8 +8,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-pacman::p_load(tidyverse,googlesheets4)
-gs4_auth(email="edwardsmolina@gmail.com")
+pacman::p_load(tidyverse, googlesheets4)
+gs4_deauth()
+# gs4_auth(email="edwardsmolina@gmail.com")
+# gs4_auth(email="Anibal@gmail.com")
 
 url<- "https://docs.google.com/spreadsheets/d/1uYgR0ccm-PsZ8JwMDYWX8mUFI-N4I5ldN1EuB49hfno/edit?usp=sharing"
 # url %>% gs4_browse()
